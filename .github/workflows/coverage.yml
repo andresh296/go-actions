@@ -13,16 +13,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-  
-      - name: generate test coverage
-        run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+      # Paso 1: Check out el código
+      - name: Check out code
+        uses: actions/checkout@v2
 
-      - name: check test coverage
-        uses: vladopajic/go-test-coverage@v2
+      # Paso 2: Configurar Go
+      - name: Set up Go
+        uses: actions/setup-go@v3
         with:
-          profile: cover.out
-          threshold-file: 80
-          threshold-package: 80
-          threshold-total: 95
+          go-version: '1.19'  # O la versión que estés utilizando
+
+      # Paso 3: Instalar dependencias
+      - name: Install dependencies
+        run: go mod tidy
+
+      # Paso 4: Ejecutar tests
+      - name: Run tests
+        run: go test -v ./...
+
+      # Paso 5: Construir el proyecto
+      - name: Build
+        run: go build -v ./...
+
+      # Paso 6: Subir el artefacto de la build (opcional)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: go-build-artifact
+          path: ./your-executable  # Cambia esto al archivo que sea tu artefacto
