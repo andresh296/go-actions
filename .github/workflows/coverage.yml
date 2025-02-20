@@ -1,36 +1,41 @@
-name: Go CI
+name: Go Coverage Check
 
 on:
-  push:
-    branches:
-      - '*'
   pull_request:
     branches:
-      - '*'
+      - '*'  # Esto ejecutará la acción en cualquier pull request hacia cualquier rama
+
 jobs:
-  coverage:
+  check-coverage:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        # default fetch-depth is insufficent to find previous coverage notes
-        fetch-depth: 10
+      # Paso 1: Check out el código
+      - name: Check out code
+        uses: actions/checkout@v2
 
-    - uses: gwatts/go-coverage-action@v2
-      id: coverage
-      with:
-        # Optional coverage threshold
-        # use fail-coverage to determine what should happen below this threshold
-        coverage-threshold: 80
+      # Paso 2: Configurar Go
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.19'  # O la versión de Go que uses
 
-        # collect coverage for all packages beyond the one under test
-        cover-pkg: ./...
+      # Paso 3: Instalar dependencias
+      - name: Install dependencies
+        run: go mod tidy
 
-        # Ignore code-generated files when calculating coverage totals
-        ignore-pattern: |
-          \.pb\.go$
-          \_string\.go$
+      # Paso 4: Ejecutar tests y generar el informe de coverage
+      - name: Run tests with coverage
+        run: |
+          mkdir -p coverage
+          go test -coverprofile=coverage/profile.cov ./...
         
-        # A url that the html report will be accessible at, once your
-        # workflow uploads it.  Used in the pull request comment.
-        report-url: https://artifacts.example.com/go-coverage/${{ github.ref_name}}.html
+      # Paso 5: Verificar si el coverage es mayor o igual a 80%
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage/profile.cov | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Coverage is $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "Coverage is below 80%. Merge is not allowed."
+            exit 1
+          fi
